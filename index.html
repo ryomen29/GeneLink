@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GENELInK</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="error-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);color:#fff;padding:20px;display:none;overflow:auto;z-index:9999;">
+      <h2>Runtime error</h2>
+      <pre id="error-message" style="white-space:pre-wrap"></pre>
+    </div>
+    <script>
+      function showError(msg){
+        const overlay = document.getElementById('error-overlay')
+        const container = document.getElementById('error-message')
+        container.textContent = msg
+        overlay.style.display = 'block'
+      }
+
+      window.addEventListener('error', (e)=>{
+        showError(e.message + '\n' + (e.error && e.error.stack ? e.error.stack : ''))
+      })
+
+      window.addEventListener('unhandledrejection', (e)=>{
+        showError((e.reason && e.reason.message) || String(e.reason))
+      })
+    </script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

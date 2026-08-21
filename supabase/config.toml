@@ -1,0 +1,7 @@
+project_id = "YOUR_PROJECT_REF"
+
+[functions.ai-tutor]
+verify_jwt = true
+
+[functions.delete-student]
+verify_jwt = true
