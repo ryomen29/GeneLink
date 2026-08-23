@@ -16,7 +16,7 @@
       <header>
         <div>
           <b>🧸 GENELInK Buddy</b>
-          <small>Shh… I’m right here if you need me!</small>
+          <small>Hi, explorer! Need a tiny hint?</small>
         </div>
 
         <button @click="open = false">×</button>
@@ -39,7 +39,7 @@
       <form @submit.prevent="send">
         <input
           v-model="text"
-          placeholder="Ask me about genetics…"
+          placeholder="Ask for a clue about this topic…"
           :disabled="loading"
         />
 
@@ -50,18 +50,30 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { api } from '../services/api'
+import { computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { aiService } from '../services/ai'
+import { getLessonById } from '../data/lessons'
 
+const route = useRoute()
 const open = ref(false)
 const hover = ref(false)
 const loading = ref(false)
 const text = ref('')
+const conversationId = ref(null)
+
+const currentLesson = computed(() => getLessonById(route.params.id))
+const currentTopic = computed(() => {
+  const lesson = currentLesson.value
+  if (!lesson || !route.params.id) return null
+  const topicIndex = Number(route.query.topic ?? 0)
+  return lesson.topics[topicIndex] || lesson.topics[0]
+})
 
 const messages = ref([
   {
     role: 'ai',
-    text: 'Hi, Explorer! 🌟 I’m your tiny genetics buddy. Stuck on a lesson? I’m here!'
+    text: `Hi, Explorer! 👀 I’m your tiny genetics buddy. ${currentLesson.value ? `Right now we’re exploring ${currentLesson.value.title}.` : 'Ask me for a hint, and I’ll help you think it through.'}`
   }
 ])
 
@@ -72,30 +84,34 @@ async function send() {
     return
   }
 
-  messages.value.push({
-    role: 'student',
-    text: question
-  })
+  const lessonId = currentLesson.value?.id ?? null
+  const topicId = currentTopic.value?.id ?? null
 
+  messages.value.push({ role: 'student', text: question })
   text.value = ''
   loading.value = true
 
   try {
-    const result = await api.aiChat({
+    const result = await aiService.ask({
       message: question,
-      lessonId: null
+      lessonId,
+      topicId,
+      conversationId: conversationId.value
     })
+
+    if (result?.conversationId) {
+      conversationId.value = result.conversationId
+    }
 
     messages.value.push({
       role: 'ai',
-      text: result.answer || 'Let’s figure it out together! 🧬'
+      text: result?.answer || 'Let’s figure it out together! 🧬'
     })
   } catch (error) {
+    console.error('AI tutor call failed:', error)
     messages.value.push({
       role: 'ai',
-      text:
-        error.message ||
-        'Oops! My tiny lab computer needs a moment. Try again! 🧪'
+      text: error.message || 'Oops! My tiny lab computer needs a moment. Try again! 🧪'
     })
   } finally {
     loading.value = false
