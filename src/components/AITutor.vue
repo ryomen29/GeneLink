@@ -69,6 +69,11 @@ const currentTopic = computed(() => {
   const topicIndex = Number(route.query.topic ?? 0)
   return lesson.topics[topicIndex] || lesson.topics[0]
 })
+const assessmentState = computed(() => {
+  if (route.path.startsWith('/student/pretest/')) return 'pretest_active'
+  if (route.path === '/student/final-exam') return 'final_exam_active'
+  return 'lesson'
+})
 
 const messages = ref([
   {
@@ -92,10 +97,12 @@ async function send() {
   loading.value = true
 
   try {
-    const result = await aiService.ask({
-      message: question,
+    const result = await aiService.sendMessage(question, {
       lessonId,
       topicId,
+      lessonTitle: currentLesson.value?.title ?? null,
+      topicTitle: currentTopic.value?.title ?? null,
+      assessmentState: assessmentState.value,
       conversationId: conversationId.value
     })
 
@@ -109,9 +116,10 @@ async function send() {
     })
   } catch (error) {
     console.error('AI tutor call failed:', error)
+    text.value = question
     messages.value.push({
       role: 'ai',
-      text: error.message || 'Oops! My tiny lab computer needs a moment. Try again! 🧪'
+      text: error.message || 'Oops! I’m having a tiny brain break right now 🥺✨ Please try again in a moment.'
     })
   } finally {
     loading.value = false

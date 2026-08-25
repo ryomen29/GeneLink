@@ -159,19 +159,4 @@ export const api = {
     return data
   },
 
-  async aiChat({ message, lessonId, conversationId }) {
-    const functionName =
-      import.meta.env.VITE_SUPABASE_AI_FUNCTION || 'ai-tutor'
-
-    const { data, error } = await supabase.functions.invoke(functionName, {
-      body: {
-        message,
-        lessonId,
-        conversationId
-      }
-    })
-
-    if (error) throw error
-    return data
-  }
 }

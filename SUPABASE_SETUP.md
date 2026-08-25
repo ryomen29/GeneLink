@@ -82,13 +82,25 @@ supabase functions deploy delete-student
 
 Set the AI secret:
 
-supabase secrets set OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+supabase secrets set AI_API_KEY=YOUR_OPENAI_API_KEY
 
 Optional model:
 
-supabase secrets set OPENAI_MODEL=gpt-4o-mini
+supabase secrets set AI_MODEL=gpt-4o-mini
 
-NEVER put the OpenAI API key in `.env.local` or Vue/browser code.
+Deploy the AI function after setting its secrets:
+
+supabase functions deploy ai-tutor
+
+The Vue frontend only uses these public environment variables:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- Optional: `VITE_SUPABASE_AI_FUNCTION=ai-tutor`
+
+`AI_API_KEY` and `AI_MODEL` are Supabase Edge Function secrets only. NEVER put the
+OpenAI API key in `.env.local`, a `VITE_` variable, Vercel frontend environment
+variables, Vue/browser code, source code, or GitHub.
 
 ## 6. Why account deletion uses an Edge Function
 

@@ -42,7 +42,7 @@ See `SUPABASE_SETUP.md`.
 4. Run the SQL migration in `supabase/migrations/`.
 5. Create/promote your admin account.
 6. Deploy the two Edge Functions.
-7. Add `OPENAI_API_KEY` as a Supabase secret for the AI tutor.
+7. Add `AI_API_KEY` and `AI_MODEL` as Supabase secrets for the AI tutor.
 8. Run `npm run dev`.
 
 ## Security
@@ -57,3 +57,22 @@ in Vue or `.env.local`.
 
 The service-role key is used only inside the `delete-student` Edge Function.
 The OpenAI key is used only inside the `ai-tutor` Edge Function.
+
+## AI setup
+
+Frontend environment variables may contain only public Supabase values:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- Optional: `VITE_SUPABASE_AI_FUNCTION=ai-tutor`
+
+Configure the OpenAI provider only as Supabase Edge Function secrets:
+
+```sh
+supabase secrets set AI_API_KEY=YOUR_OPENAI_API_KEY
+supabase secrets set AI_MODEL=gpt-4o-mini
+supabase functions deploy ai-tutor
+```
+
+Never put the AI key in `.env.local`, Vercel frontend variables, any `VITE_`
+variable, source code, or GitHub.
