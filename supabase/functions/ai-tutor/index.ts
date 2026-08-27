@@ -42,24 +42,37 @@ Deno.serve(async (req) => {
 
     if (!supabaseUrl || !anonKey) {
       console.error('Supabase environment variables are missing.')
-      return jsonResponse({ error: friendlyError }, 500)
+
+      return jsonResponse(
+        { error: friendlyError },
+        500
+      )
     }
 
     if (!aiApiKey) {
       console.error(
         'AI_API_KEY is not configured in Supabase secrets.'
       )
-      return jsonResponse({ error: friendlyError }, 500)
+
+      return jsonResponse(
+        { error: friendlyError },
+        500
+      )
     }
 
     // Authenticated Supabase client
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: {
-        headers: {
-          Authorization: req.headers.get('Authorization') ?? ''
+    const userClient = createClient(
+      supabaseUrl,
+      anonKey,
+      {
+        global: {
+          headers: {
+            Authorization:
+              req.headers.get('Authorization') ?? ''
+          }
         }
       }
-    })
+    )
 
     // Get authenticated user
     const {
@@ -204,6 +217,8 @@ For normal questions, provide enough explanation for the student to understand t
 - 1 to 3 short explanatory paragraphs or sections
 - an example when useful
 
+For complex questions, you may provide a longer explanation when necessary. Do not stop in the middle of an explanation. Complete the thought before ending your response.
+
 Use headings, bullet points, or numbered steps when they make the explanation easier to understand.
 
 Do not overload the student with unnecessary information.
@@ -281,7 +296,9 @@ ${assessmentState}
     const aiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
         model
-      )}:generateContent?key=${encodeURIComponent(aiApiKey)}`,
+      )}:generateContent?key=${encodeURIComponent(
+        aiApiKey
+      )}`,
       {
         method: 'POST',
         headers: {
@@ -298,7 +315,7 @@ ${assessmentState}
           contents: geminiContents,
           generationConfig: {
             temperature: 0.6,
-            maxOutputTokens: 800
+            maxOutputTokens: 2000
           }
         })
       }
@@ -312,7 +329,8 @@ ${assessmentState}
         'Gemini API request failed:',
         {
           status: aiResponse.status,
-          statusText: aiResponse.statusText,
+          statusText:
+            aiResponse.statusText,
           body: errorText
         }
       )
