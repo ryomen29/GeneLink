@@ -2,10 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Browser tab logo / favicon -->
-    <link rel="icon" type="image/png" href="/genelogo1.png" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <!-- GENELInK browser tab logo / favicon -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="/genelogo1.png"
+    />
 
     <title>GENELInK</title>
   </head>
@@ -27,6 +35,7 @@
       "
     >
       <h2>Runtime error</h2>
+
       <pre
         id="error-message"
         style="white-space: pre-wrap"
@@ -35,8 +44,11 @@
 
     <script>
       function showError(msg) {
-        const overlay = document.getElementById('error-overlay')
-        const container = document.getElementById('error-message')
+        const overlay =
+          document.getElementById('error-overlay')
+
+        const container =
+          document.getElementById('error-message')
 
         container.textContent = msg
         overlay.style.display = 'block'
@@ -45,18 +57,27 @@
       window.addEventListener('error', (e) => {
         showError(
           e.message +
-          '\n' +
-          (e.error && e.error.stack ? e.error.stack : '')
+            '\n' +
+            (e.error && e.error.stack
+              ? e.error.stack
+              : '')
         )
       })
 
-      window.addEventListener('unhandledrejection', (e) => {
-        showError(
-          (e.reason && e.reason.message) || String(e.reason)
-        )
-      })
+      window.addEventListener(
+        'unhandledrejection',
+        (e) => {
+          showError(
+            (e.reason && e.reason.message) ||
+              String(e.reason)
+          )
+        }
+      )
     </script>
 
-    <script type="module" src="/src/main.js"></script>
+    <script
+      type="module"
+      src="/src/main.js"
+    ></script>
   </body>
 </html>
