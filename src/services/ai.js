@@ -12,6 +12,10 @@ export const aiService = {
           topicId: context.topicId ?? null,
           lessonTitle: context.lessonTitle ?? null,
           topicTitle: context.topicTitle ?? null,
+          phase: context.phase ?? null,
+          learningObjective: context.learningObjective ?? null,
+          studentResponse: context.studentResponse ?? null,
+          simulationResult: context.simulationResult ?? null,
           assessmentState: context.assessmentState ?? 'lesson',
           conversationId: context.conversationId ?? null
         }

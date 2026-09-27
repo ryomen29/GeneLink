@@ -129,3 +129,6 @@ button,input { font:inherit } button { cursor:pointer; border:0 }
   .hero { margin:18px 12px; padding:22px 18px }
   .hero h1 { font-size:28px }
 }
+
+.ai-wrap.inline { position:relative; right:auto; bottom:auto; z-index:auto; width:100% }
+.ai-panel.ai-panel-inline { position:relative; inset:auto; width:100%; max-width:640px; height:360px; box-shadow:none }

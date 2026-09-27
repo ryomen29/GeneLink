@@ -44,80 +44,31 @@ export const lessonService = {
   },
 
   async submitPretestAttempt({ lessonId, answers, score, totalQuestions }) {
-    console.log('[Pretest] Starting save', {
-      lessonId,
-      answers,
-      score,
-      totalQuestions
-    })
-
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    console.log('[Pretest] getSession result', { sessionData, sessionError })
-
-    const { data: userData, error: userError } = await supabase.auth.getUser()
-    console.log('[Pretest] getUser result', { userData, userError })
-
-    const userId = userData?.user?.id ?? sessionData?.session?.user?.id
-    console.log('[Pretest] resolved userId', userId)
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError) throw userError
+    const userId = user?.id
 
     if (!userId) {
-      const error = new Error('You must be logged in.')
-      console.error('[Pretest] no authenticated user found', {
-        sessionData,
-        sessionError,
-        userData,
-        userError
-      })
-      throw error
+      throw new Error('You must be logged in.')
     }
 
-    const insertPayload = {
-      student_id: userId,
-      lesson_id: lessonId,
-      answers,
-      score,
-      total_questions: totalQuestions,
-      submitted_at: new Date().toISOString()
-    }
-
-    console.log('[Pretest] insert payload', insertPayload)
-
-    const insertResult = await supabase
+    const { data, error } = await supabase
       .from('pretest_attempts')
-      .insert(insertPayload)
+      .insert({
+        student_id: userId,
+        lesson_id: lessonId,
+        answers,
+        score,
+        total_questions: totalQuestions,
+        submitted_at: new Date().toISOString()
+      })
       .select()
       .single()
 
-    console.log('[Pretest] insert result', insertResult)
-
-    if (insertResult.error) {
-      console.error('[Pretest] insert failed with Supabase error', insertResult.error)
-      throw insertResult.error
-    }
-
-    const progressPayload = {
-      student_id: userId,
-      lesson_id: lessonId,
-      pretest_completed: true,
-      completed_at: new Date().toISOString()
-    }
-
-    console.log('[Pretest] progress upsert payload', progressPayload)
-
-    const progressResult = await supabase
-      .from('student_lesson_progress')
-      .upsert(progressPayload, { onConflict: 'student_id,lesson_id' })
-      .select()
-      .single()
-
-    console.log('[Pretest] progress upsert result', progressResult)
-
-    if (progressResult.error) {
-      console.error('[Pretest] progress upsert failed with Supabase error', progressResult.error)
-      throw progressResult.error
-    }
-
-    return insertResult.data
+    if (error) throw error
+    // The schedule migration updates student_lesson_progress from an AFTER
+    // INSERT trigger in the same transaction as this assessment attempt.
+    return data
   },
 
   async markTopicComplete({ lessonId, topicId }) {
@@ -134,6 +85,26 @@ export const lessonService = {
         topic_id: topicId,
         completed_at: new Date().toISOString()
       }, { onConflict: 'student_id,topic_id' })
+  },
+
+  async markLessonComplete({ lessonId }) {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const userId = sessionData.session?.user?.id
+
+    if (!userId) throw new Error('You must be logged in.')
+
+    const { data, error } = await supabase
+      .from('student_lesson_progress')
+      .upsert({
+        student_id: userId,
+        lesson_id: lessonId,
+        completed_at: new Date().toISOString()
+      }, { onConflict: 'student_id,lesson_id' })
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
   },
 
   async getStudentProgress() {

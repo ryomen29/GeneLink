@@ -121,6 +121,27 @@ Deno.serve(async (req) => {
         ? rawContext.topicTitle.slice(0, 160)
         : null
 
+    const phase =
+      typeof rawContext.phase === 'string'
+        ? rawContext.phase.slice(0, 80)
+        : null
+
+    const learningObjective =
+      typeof rawContext.learningObjective === 'string'
+        ? rawContext.learningObjective.slice(0, 400)
+        : null
+
+    const studentResponse =
+      typeof rawContext.studentResponse === 'string'
+        ? rawContext.studentResponse.slice(0, 1600)
+        : null
+
+    const simulationResult =
+      rawContext.simulationResult &&
+      typeof rawContext.simulationResult === 'object'
+        ? JSON.stringify(rawContext.simulationResult).slice(0, 1200)
+        : null
+
     const assessmentState =
       assessmentStates.has(rawContext.assessmentState)
         ? rawContext.assessmentState
@@ -138,6 +159,41 @@ Deno.serve(async (req) => {
             'Please enter a shorter question to continue.'
         },
         400
+      )
+    }
+
+    // Verify the same live schedule on the server before allowing any tutor
+    // request. Client countdowns and route guards are presentation controls;
+    // the database clock and mapping remain authoritative.
+    const {
+      data: studySession,
+      error: scheduleError
+    } = await userClient.rpc('get_current_study_session')
+
+    if (scheduleError || !studySession) {
+      console.error('AI tutor schedule verification failed:', scheduleError)
+      return jsonResponse(
+        { error: 'The learning schedule could not be verified. Please return during your scheduled session.' },
+        503
+      )
+    }
+
+    const scheduledActivity = studySession.scheduled_activity
+    const activityMatches =
+      (assessmentState.startsWith('pretest') &&
+        scheduledActivity?.activity_type === 'pretest' &&
+        lessonId === Number(scheduledActivity.lesson_id)) ||
+      (assessmentState.startsWith('final_exam') &&
+        scheduledActivity?.activity_type === 'post_test') ||
+      (assessmentState === 'lesson' &&
+        scheduledActivity?.activity_type === 'lesson' &&
+        lessonId === Number(scheduledActivity.lesson_id) &&
+        studySession.day1_pretest_complete === true)
+
+    if (studySession.session_open !== true || !activityMatches) {
+      return jsonResponse(
+        { error: 'GENELInK Buddy is available only during the scheduled activity.' },
+        403
       )
     }
 
@@ -199,6 +255,8 @@ Help students learn about:
 - inheritance
 - traits
 - basic genetics concepts appropriate for Grade 9
+- Keep the response focused on the student's current topic and learning objective.
+- If the question is unrelated to the current lesson, briefly redirect the student to the genetics lesson.
 
 TEACHING STYLE:
 When answering a question:
@@ -259,6 +317,18 @@ ${topicTitle || 'Not specified'}
 
 Topic ID:
 ${topicId ?? 'Not specified'}
+
+Instructional phase:
+${phase || 'Not specified'}
+
+Learning objective:
+${learningObjective || 'Not specified'}
+
+Student's previous response (for targeted feedback):
+${studentResponse || 'Not provided'}
+
+Guided simulation evaluation (not an external simulation inspection):
+${simulationResult || 'Not provided'}
 
 Assessment state:
 ${assessmentState}

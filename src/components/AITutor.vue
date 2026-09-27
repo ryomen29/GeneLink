@@ -1,6 +1,7 @@
 <template>
-  <div class="ai-wrap">
+  <div v-if="inline || !isLessonRoute" class="ai-wrap" :class="{ inline }">
     <button
+      v-if="!inline"
       class="ai-hidey"
       :class="{ open }"
       @mouseenter="hover = true"
@@ -12,14 +13,14 @@
       <i>✦</i>
     </button>
 
-    <section v-if="open" class="ai-panel">
+    <section v-if="open || inline" class="ai-panel" :class="{ 'ai-panel-inline': inline }">
       <header>
         <div>
           <b>🧸 GENELInK Buddy</b>
           <small>Hi, explorer! Need a tiny hint?</small>
         </div>
 
-        <button @click="open = false">×</button>
+        <button @click="close">×</button>
       </header>
 
       <div class="ai-messages">
@@ -56,13 +57,20 @@ import { aiService } from '../services/ai'
 import { getLessonById } from '../data/lessons'
 
 const route = useRoute()
-const open = ref(false)
+const props = defineProps({
+  inline: { type: Boolean, default: false },
+  openOnMount: { type: Boolean, default: false },
+  context: { type: Object, default: null }
+})
+const emit = defineEmits(['close'])
+const open = ref(props.openOnMount || props.inline)
 const hover = ref(false)
 const loading = ref(false)
 const text = ref('')
 const conversationId = ref(null)
 
 const currentLesson = computed(() => getLessonById(route.params.id))
+const isLessonRoute = computed(() => route.path.startsWith('/student/lesson/'))
 const currentTopic = computed(() => {
   const lesson = currentLesson.value
   if (!lesson || !route.params.id) return null
@@ -70,10 +78,16 @@ const currentTopic = computed(() => {
   return lesson.topics[topicIndex] || lesson.topics[0]
 })
 const assessmentState = computed(() => {
+  if (props.context?.assessmentState) return props.context.assessmentState
   if (route.path.startsWith('/student/pretest/')) return 'pretest_active'
   if (route.path === '/student/final-exam') return 'final_exam_active'
   return 'lesson'
 })
+
+function close() {
+  open.value = false
+  emit('close')
+}
 
 const messages = ref([
   {
@@ -89,8 +103,8 @@ async function send() {
     return
   }
 
-  const lessonId = currentLesson.value?.id ?? null
-  const topicId = currentTopic.value?.id ?? null
+  const lessonId = props.context?.lessonId ?? currentLesson.value?.id ?? null
+  const topicId = props.context?.topicId ?? currentTopic.value?.id ?? null
 
   messages.value.push({ role: 'student', text: question })
   text.value = ''
@@ -100,8 +114,12 @@ async function send() {
     const result = await aiService.sendMessage(question, {
       lessonId,
       topicId,
-      lessonTitle: currentLesson.value?.title ?? null,
-      topicTitle: currentTopic.value?.title ?? null,
+      lessonTitle: props.context?.lessonTitle ?? currentLesson.value?.title ?? null,
+      topicTitle: props.context?.topicTitle ?? currentTopic.value?.title ?? null,
+      phase: props.context?.phase ?? null,
+      learningObjective: props.context?.learningObjective ?? null,
+      studentResponse: props.context?.studentResponse ?? null,
+      simulationResult: props.context?.simulationResult ?? null,
       assessmentState: assessmentState.value,
       conversationId: conversationId.value
     })

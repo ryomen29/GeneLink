@@ -13,6 +13,7 @@ import AdminDashboard from '../views/admin/AdminDashboard.vue'
 import StudentAccountsView from '../views/admin/StudentAccountsView.vue'
 
 import { auth } from '../services/auth'
+import { studyScheduleService } from '../services/studySchedule'
 
 const routes = [
   {
@@ -64,7 +65,8 @@ const routes = [
     component: LessonView,
     meta: {
       requiresAuth: true,
-      role: 'student'
+      role: 'student',
+      scheduledActivity: 'lesson'
     }
   },
 
@@ -73,7 +75,8 @@ const routes = [
     component: PreTestView,
     meta: {
       requiresAuth: true,
-      role: 'student'
+      role: 'student',
+      scheduledActivity: 'pretest'
     }
   },
 
@@ -82,7 +85,8 @@ const routes = [
     component: FinalExamView,
     meta: {
       requiresAuth: true,
-      role: 'student'
+      role: 'student',
+      scheduledActivity: 'post_test'
     }
   },
 
@@ -154,6 +158,30 @@ router.beforeEach(async (to) => {
 
         // Unknown role.
         return '/login'
+      }
+    }
+
+    // Schedule checks run only after the existing authentication and role
+    // checks. The database RPC uses PostgreSQL time in Asia/Manila; failures
+    // fail closed for learning routes without signing the student out.
+    if (to.meta.scheduledActivity && account?.profile?.role === 'student') {
+      const lessonId = to.params.id ? Number(to.params.id) : null
+      let access
+      try {
+        access = await studyScheduleService.assertScheduledActivity(
+          to.meta.scheduledActivity,
+          lessonId
+        )
+      } catch (scheduleError) {
+        console.error('Schedule access could not be verified:', scheduleError)
+        return { path: '/student', query: { scheduleNotice: 'unavailable' } }
+      }
+
+      if (!access.allowed) {
+        return {
+          path: '/student',
+          query: { scheduleNotice: access.reason || 'activity_not_scheduled' }
+        }
       }
     }
 

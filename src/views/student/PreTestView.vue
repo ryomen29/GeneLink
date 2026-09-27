@@ -7,7 +7,7 @@
           <h1>{{ lesson.title }}</h1>
           <p>Let’s see what you already know! Don’t worry about getting everything right. This is just your starting point!</p>
         </div>
-        <div class="timer" :class="{ danger: seconds < 60 }">⏱ {{ formattedTime }}</div>
+        <div class="timer" :class="{ danger: remainingSeconds < 60 }" aria-live="polite">⏱ {{ formattedTime }} left in today's session</div>
       </div>
 
       <div v-if="!submitted" class="question-card">
@@ -33,18 +33,21 @@
         <div class="big-emoji">🎉</div>
         <h2>Warm-up complete!</h2>
         <p>You scored <b>{{ score }} / 5</b>. Great start, Explorer!</p>
-        <RouterLink class="primary inline" :to="`/student/lesson/${lesson.id}`">Unlock the lesson →</RouterLink>
+        <p>Lesson 1 opens on its scheduled day. Your score has been saved.</p>
+        <RouterLink class="primary inline" to="/student/lessons">View the weekly schedule →</RouterLink>
       </div>
     </div>
   </StudentShell>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StudentShell from '../../components/StudentShell.vue'
 import { getLessonById, lessons, pretests } from '../../data/lessons'
 import { lessonService } from '../../services/lessons'
+import { useStudySchedule } from '../../composables/useStudySchedule'
+import { learningEventService } from '../../services/learningEvents'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,29 +56,38 @@ const lesson = getLessonById(id) || lessons.find((item) => item.id === id)
 const questions = pretests[id] || []
 const current = ref(0)
 const answers = ref(Array(5).fill(undefined))
-const seconds = ref(480)
 const submitted = ref(false)
 const score = ref(0)
 const isSaving = ref(false)
-const formattedTime = computed(() => `${String(Math.floor(seconds.value / 60)).padStart(2, '0')}:${String(seconds.value % 60).padStart(2, '0')}`)
+const schedule = useStudySchedule()
+const remainingSeconds = computed(() => schedule.remainingSeconds.value)
+const formattedTime = computed(() => `${String(Math.floor(remainingSeconds.value / 60)).padStart(2, '0')}:${String(remainingSeconds.value % 60).padStart(2, '0')}`)
 
 if (!lesson || !questions.length) {
   router.replace('/student/lessons')
 }
 
-const timer = setInterval(() => {
-  if (!submitted.value && seconds.value > 0) seconds.value--
-  else if (seconds.value === 0 && !submitted.value) finish()
-}, 1000)
+onMounted(() => recordPretestEvent('session_started'))
 
-onBeforeUnmount(() => clearInterval(timer))
+async function recordPretestEvent(eventName) {
+  try {
+    await learningEventService.record({
+      eventName,
+      lessonId: lesson.id,
+      phase: eventName === 'session_started' ? 'engage' : 'feedback',
+      sessionDay: schedule.currentDay.value,
+      details: { activityType: 'pretest' }
+    })
+  } catch (error) {
+    if (eventName === 'session_started' && error?.code === '23505') return
+    console.warn(`Pre-test event ${eventName} could not be saved:`, error)
+  }
+}
 
 async function finish() {
-  if (isSaving.value || submitted.value) return
+  if (isSaving.value || submitted.value || !schedule.sessionOpen.value) return
 
   const computedScore = questions.reduce((total, question, index) => total + (answers.value[index] === question.answer ? 1 : 0), 0)
-  score.value = computedScore
-  submitted.value = true
   isSaving.value = true
 
   try {
@@ -85,9 +97,12 @@ async function finish() {
       score: computedScore,
       totalQuestions: questions.length
     })
+    await recordPretestEvent('session_completed')
+    score.value = computedScore
+    submitted.value = true
   } catch (error) {
     console.error('[Pretest UI] persistence failed with full Supabase error:', error)
-    alert(error?.message || 'Pre-test save failed. See console for the exact Supabase error.')
+    alert(error?.message || 'We could not save your pre-test. Check that the scheduled session is still open, then try again.')
   } finally {
     isSaving.value = false
   }

@@ -16,12 +16,21 @@
     </div>
 
     <div class="cards">
-      <article v-for="lesson in lessons" :key="lesson.id" class="lesson-mini">
+      <article
+        v-for="lesson in lessons"
+        :key="lesson.id"
+        class="lesson-mini"
+        :class="{ 'lesson-locked': !canViewLessonTopics(lesson.id) }"
+      >
         <div class="emoji">{{ lesson.emoji }}</div>
         <h3>{{ lesson.title }}</h3>
-        <p>{{ lessonProgressMap[lesson.id]?.pretest_completed ? 'Pre-test complete' : '5-question pre-test • 8 minutes' }}</p>
-        <RouterLink :to="`/student/pretest/${lesson.id}`" v-if="!lessonProgressMap[lesson.id]?.pretest_completed">Take pre-test →</RouterLink>
-        <RouterLink :to="`/student/lesson/${lesson.id}`" v-else>Open lesson →</RouterLink>
+        <p v-if="canOpenLesson(lesson.id) && !schedule.day1PretestComplete.value">Today's session is open · topics locked until the Day 1 pre-test</p>
+        <p v-else-if="canOpenLesson(lesson.id)">Today's scheduled lesson</p>
+        <p v-else-if="canOpenPretest(lesson.id)">Day 1 pre-test · Learning topics unlock after completion</p>
+        <p v-else-if="lessonProgressMap[lesson.id]?.pretest_completed">{{ scheduledDayLabel(lesson.id) }}</p>
+        <p v-else class="locked-copy">🔒 {{ scheduledDayLabel(lesson.id) }}</p>
+        <RouterLink :to="`/student/pretest/${lesson.id}`" v-if="canOpenPretest(lesson.id)">Take Day 1 pre-test →</RouterLink>
+        <RouterLink :to="`/student/lesson/${lesson.id}`" v-else-if="canOpenLesson(lesson.id)">Open today's lesson →</RouterLink>
       </article>
     </div>
   </StudentShell>
@@ -32,8 +41,10 @@ import { onMounted, ref } from 'vue'
 import StudentShell from '../../components/StudentShell.vue'
 import { lessons } from '../../data/lessons'
 import { lessonService } from '../../services/lessons'
+import { useStudySchedule } from '../../composables/useStudySchedule'
 
 const lessonProgressMap = ref({})
+const schedule = useStudySchedule()
 
 onMounted(async () => {
   try {
@@ -47,4 +58,31 @@ onMounted(async () => {
     console.error('Student dashboard progress lookup failed:', error)
   }
 })
+
+function scheduledDayLabel(lessonId) {
+  const day = schedule.activities.value.find((item) =>
+    item.activity_type === 'lesson' && Number(item.lesson_id) === Number(lessonId)
+  )?.day_number
+  return day ? `Scheduled for Day ${day}` : 'Schedule unavailable'
+}
+
+function canOpenPretest(lessonId) {
+  const activity = schedule.scheduledActivity.value
+  return Boolean(schedule.sessionOpen.value && activity?.activity_type === 'pretest' && Number(activity.lesson_id) === Number(lessonId))
+}
+
+function canOpenLesson(lessonId) {
+  const activity = schedule.scheduledActivity.value
+  return Boolean(schedule.sessionOpen.value && activity?.activity_type === 'lesson' && Number(activity.lesson_id) === Number(lessonId))
+}
+
+function canViewLessonTopics(lessonId) {
+  return canOpenLesson(lessonId) && schedule.day1PretestComplete.value
+}
 </script>
+
+<style scoped>
+.lesson-mini.lesson-locked { background: #f2f4f8; color: #66758b; }
+.lesson-locked .emoji, .lesson-locked h3, .lesson-locked .locked-copy { filter: blur(1.5px); }
+.lesson-locked::after { content: '🔒 Locked'; color: #5c687b; font-weight: 800; }
+</style>

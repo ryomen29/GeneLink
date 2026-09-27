@@ -17,6 +17,11 @@
       />
     </div>
 
+    <div class="simulation-fallback">
+      <p>Having trouble with the embedded view? We couldn't load the simulation right now. You can continue with the guided activity.</p>
+      <a :href="url" target="_blank" rel="noopener noreferrer">Open simulation in a new tab ↗</a>
+    </div>
+
     <div class="reflection-box">
       <p><strong>What did you notice?</strong></p>
       <p>What changed when you adjusted the controls? What pattern did you discover?</p>
@@ -76,4 +81,17 @@ defineProps({
   padding: 14px 16px;
   color: #3a3c43;
 }
+
+.simulation-fallback {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  color: #53627b;
+}
+
+.simulation-fallback p { margin: 0; }
+.simulation-fallback a { color: #5142a9; font-weight: 800; }
 </style>

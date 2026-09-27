@@ -37,9 +37,13 @@ npm run dev
 
 ## 3. Create the database
 
-Run:
+Run these additive migrations in order:
 
 supabase/migrations/202608200001_genelink_schema.sql
+supabase/migrations/202609270001_add_student_learning_events.sql
+supabase/migrations/202609270002_weekly_study_schedule.sql
+supabase/migrations/20260927083216_schedule_gated_assessment_read_grants.sql
+supabase/migrations/20260927083708_authenticated_progress_sequence_grants.sql
 
 in Supabase SQL Editor.
 
@@ -55,9 +59,24 @@ This creates:
 - final_exam_attempts
 - ai_conversations
 - ai_messages
+- student_learning_events
+- study_schedule
+- weekly_learning_schedule
 - student_score_summary
 
 It also enables Row Level Security and seeds the initial genetics lessons/questions.
+The learning-events migration adds owner-scoped insert/read access for authenticated
+students and stores structured event metadata only; free-response text is not copied
+into the event log.
+The weekly-schedule migration adds the Monday–Sunday activity map, Asia/Manila
+session configuration, server-clock RPC, and database write guards for scheduled
+pre-tests, lesson/topic progress, learning events, and the existing final exam.
+It maps the five existing lessons by their seeded `sort_order`; it creates no
+duplicate lesson or assessment records.
+The later grant migrations provide authenticated reads to assessment tables
+through their restrictive schedule RLS policies, plus the minimum authenticated
+progress/identity-sequence privileges required by the existing services. They
+do not add anonymous access or change owner-scoped row policies.
 
 ## 4. Create the first admin
 
